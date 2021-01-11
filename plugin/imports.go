@@ -35,21 +35,13 @@ func CleanImports(pFileText *string) *string {
 /* --------- Plugin level import handling --------- */
 
 var (
-	gormImport         = "github.com/jinzhu/gorm"
-	tkgormImport       = "github.com/infobloxopen/atlas-app-toolkit/gorm"
 	uuidImport         = "github.com/satori/go.uuid"
-	authImport         = "github.com/infobloxopen/atlas-app-toolkit/auth"
 	gormpqImport       = "github.com/jinzhu/gorm/dialects/postgres"
 	gtypesImport       = "github.com/TheSDTM/protoc-gen-gorm/types"
 	ptypesImport       = "github.com/golang/protobuf/ptypes"
 	wktImport          = "github.com/golang/protobuf/ptypes/wrappers"
 	resourceImport     = "github.com/infobloxopen/atlas-app-toolkit/gorm/resource"
-	fmImport           = "google.golang.org/genproto/protobuf/field_mask"
-	queryImport        = "github.com/infobloxopen/atlas-app-toolkit/query"
-	ocTraceImport      = "go.opencensus.io/trace"
-	gatewayImport      = "github.com/infobloxopen/atlas-app-toolkit/gateway"
 	pqImport           = "github.com/lib/pq"
-	gerrorsImport      = "github.com/TheSDTM/protoc-gen-gorm/errors"
 	stdFmtImport       = "fmt"
 	stdCtxImport       = "context"
 	stdStringsImport   = "strings"
