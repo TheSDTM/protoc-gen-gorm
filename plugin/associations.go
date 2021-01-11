@@ -53,6 +53,7 @@ func (p *OrmPlugin) parseAssociations(msg *generator.Descriptor) {
 			// Register type used, in case it's an imported type from another package
 			p.GetFileImports().typesToRegister = append(p.GetFileImports().typesToRegister, field.GetTypeName())
 			ormable.Fields[fieldName] = &Field{Type: fieldType, GormFieldOptions: fieldOpts}
+			ormable.FieldsOrder = append(ormable.FieldsOrder, fieldName)
 		}
 	}
 }
@@ -191,6 +192,7 @@ func (p *OrmPlugin) parseHasMany(msg *generator.Descriptor, parent *OrmableType,
 	}
 	if exField, ok := child.Fields[foreignKeyName]; !ok {
 		child.Fields[foreignKeyName] = foreignKey
+		child.FieldsOrder = append(child.FieldsOrder, foreignKeyName)
 	} else {
 		if exField.Type == "interface{}" {
 			exField.Type = foreignKey.Type
@@ -204,6 +206,7 @@ func (p *OrmPlugin) parseHasMany(msg *generator.Descriptor, parent *OrmableType,
 	if posField = generator.CamelCase(hasMany.GetPositionField()); posField != "" {
 		if exField, ok := child.Fields[posField]; !ok {
 			child.Fields[posField] = &Field{Type: "int", GormFieldOptions: &gorm.GormFieldOptions{Tag: hasMany.GetPositionFieldTag()}}
+			child.FieldsOrder = append(child.FieldsOrder, posField)
 		} else {
 			if !strings.Contains(exField.Type, "int") {
 				p.Fail("Cannot include", posField, "field into", child.Name, "as it already exists there with a different type.")
@@ -259,6 +262,7 @@ func (p *OrmPlugin) parseHasOne(msg *generator.Descriptor, parent *OrmableType, 
 	}
 	if exField, ok := child.Fields[foreignKeyName]; !ok {
 		child.Fields[foreignKeyName] = foreignKey
+		child.FieldsOrder = append(child.FieldsOrder, foreignKeyName)
 	} else {
 		if exField.Type == "interface{}" {
 			exField.Type = foreignKey.Type
@@ -310,6 +314,7 @@ func (p *OrmPlugin) parseBelongsTo(msg *generator.Descriptor, child *OrmableType
 	belongsTo.Foreignkey = &foreignKeyName
 	if exField, ok := child.Fields[foreignKeyName]; !ok {
 		child.Fields[foreignKeyName] = foreignKey
+		child.FieldsOrder = append(child.FieldsOrder, foreignKeyName)
 	} else {
 		if exField.Type == "interface{}" {
 			exField.Type = foreignKeyType

@@ -63,11 +63,12 @@ var builtinTypes = map[string]struct{}{
 }
 
 type OrmableType struct {
-	OriginName string
-	Name       string
-	Package    string
-	File       *generator.FileDescriptor
-	Fields     map[string]*Field
+	OriginName  string
+	Name        string
+	Package     string
+	File        *generator.FileDescriptor
+	Fields      map[string]*Field
+	FieldsOrder []string
 }
 
 type Field struct {
@@ -80,10 +81,11 @@ type Field struct {
 
 func NewOrmableType(oname, pkg string, file *generator.FileDescriptor) *OrmableType {
 	return &OrmableType{
-		OriginName: oname,
-		Package:    pkg,
-		File:       file,
-		Fields:     make(map[string]*Field),
+		OriginName:  oname,
+		Package:     pkg,
+		File:        file,
+		Fields:      make(map[string]*Field),
+		FieldsOrder: []string{},
 	}
 }
 
@@ -329,6 +331,7 @@ func (p *OrmPlugin) parseBasicFields(msg *generator.Descriptor) {
 			f.ParentOriginName = tname
 		}
 		ormable.Fields[fieldName] = f
+		ormable.FieldsOrder = append(ormable.FieldsOrder, fieldName)
 	}
 	for _, field := range getMessageOptions(msg).GetInclude() {
 		fieldName := generator.CamelCase(field.GetName())
@@ -386,6 +389,7 @@ func (p *OrmPlugin) addIncludedField(ormable *OrmableType, field *gorm.ExtraFiel
 		rawType = fmt.Sprintf("*%s", rawType)
 	}
 	ormable.Fields[fieldName] = &Field{Type: rawType, Package: typePackage, GormFieldOptions: &gorm.GormFieldOptions{Tag: field.GetTag()}}
+	ormable.FieldsOrder = append(ormable.FieldsOrder, fieldName)
 }
 
 func (p *OrmPlugin) isOrmable(typeName string) bool {
@@ -416,8 +420,7 @@ func (p *OrmPlugin) getSortedFieldNames(fields map[string]*Field) []string {
 func (p *OrmPlugin) generateOrmable(message *generator.Descriptor) {
 	ormable := p.getOrmable(p.TypeName(message))
 	p.P(`type `, ormable.Name, ` struct {`)
-
-	for _, fieldName := range p.getSortedFieldNames(ormable.Fields) { // TODO here field should be resorted to ID be first
+	for _, fieldName := range ormable.FieldsOrder {
 		field := ormable.Fields[fieldName]
 		p.P(fieldName, ` `, field.Type, p.renderGormTag(field))
 	}
