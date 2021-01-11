@@ -13,9 +13,9 @@ import (
 // Imports that are added by default but unneeded in GORM code
 var unneededImports = []string{
 	"import proto \"github.com/gogo/protobuf/proto\"\n",
-	"import _ \"github.com/infobloxopen/protoc-gen-gorm/options\"\n",
+	"import _ \"github.com/TheSDTM/protoc-gen-gorm/options\"\n",
 	// if needed will be imported with an alias
-	"import _ \"github.com/infobloxopen/protoc-gen-gorm/types\"\n",
+	"import _ \"github.com/TheSDTM/protoc-gen-gorm/types\"\n",
 	"var _ = proto.Marshal\n",
 }
 
@@ -40,7 +40,7 @@ var (
 	uuidImport         = "github.com/satori/go.uuid"
 	authImport         = "github.com/infobloxopen/atlas-app-toolkit/auth"
 	gormpqImport       = "github.com/jinzhu/gorm/dialects/postgres"
-	gtypesImport       = "github.com/infobloxopen/protoc-gen-gorm/types"
+	gtypesImport       = "github.com/TheSDTM/protoc-gen-gorm/types"
 	ptypesImport       = "github.com/golang/protobuf/ptypes"
 	wktImport          = "github.com/golang/protobuf/ptypes/wrappers"
 	resourceImport     = "github.com/infobloxopen/atlas-app-toolkit/gorm/resource"
@@ -49,7 +49,7 @@ var (
 	ocTraceImport      = "go.opencensus.io/trace"
 	gatewayImport      = "github.com/infobloxopen/atlas-app-toolkit/gateway"
 	pqImport           = "github.com/lib/pq"
-	gerrorsImport      = "github.com/infobloxopen/protoc-gen-gorm/errors"
+	gerrorsImport      = "github.com/TheSDTM/protoc-gen-gorm/errors"
 	stdFmtImport       = "fmt"
 	stdCtxImport       = "context"
 	stdStringsImport   = "strings"

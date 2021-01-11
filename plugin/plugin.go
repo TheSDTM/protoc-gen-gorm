@@ -14,7 +14,7 @@ import (
 
 	"log"
 
-	gorm "github.com/infobloxopen/protoc-gen-gorm/options"
+	gorm "github.com/TheSDTM/protoc-gen-gorm/options"
 )
 
 const (
@@ -68,7 +68,6 @@ type OrmableType struct {
 	Package    string
 	File       *generator.FileDescriptor
 	Fields     map[string]*Field
-	Methods    map[string]*autogenMethod
 }
 
 type Field struct {
@@ -85,24 +84,22 @@ func NewOrmableType(oname, pkg string, file *generator.FileDescriptor) *OrmableT
 		Package:    pkg,
 		File:       file,
 		Fields:     make(map[string]*Field),
-		Methods:    make(map[string]*autogenMethod),
 	}
 }
 
 // OrmPlugin implements the plugin interface and creates GORM code from .protos
 type OrmPlugin struct {
 	*generator.Generator
-	dbEngine        int
-	stringEnums     bool
-	gateway         bool
-	ormableTypes    map[string]*OrmableType
-	EmptyFiles      []string
-	currentPackage  string
-	currentFile     *generator.FileDescriptor
-	fileImports     map[*generator.FileDescriptor]*fileImports
-	messages        map[string]struct{}
-	ormableServices []autogenService
-	suppressWarn    bool
+	dbEngine       int
+	stringEnums    bool
+	gateway        bool
+	ormableTypes   map[string]*OrmableType
+	EmptyFiles     []string
+	currentPackage string
+	currentFile    *generator.FileDescriptor
+	fileImports    map[*generator.FileDescriptor]*fileImports
+	messages       map[string]struct{}
+	suppressWarn   bool
 }
 
 func (p *OrmPlugin) setFile(file *generator.FileDescriptor) {
@@ -186,7 +183,6 @@ func (p *OrmPlugin) Generate(file *generator.FileDescriptor) {
 		for _, fileProto := range p.AllFiles().GetFile() {
 			file := p.FileOf(fileProto)
 			p.setFile(file)
-			p.parseServices(file)
 		}
 	}
 	// Return to the file at hand and then generate anything needed
@@ -202,8 +198,6 @@ func (p *OrmPlugin) Generate(file *generator.FileDescriptor) {
 			p.generateHookInterfaces(msg)
 		}
 	}
-	p.generateDefaultHandlers(file)
-	p.generateDefaultServer(file)
 	// no ormable objects, and no imports (means no services generated)
 	if empty && len(p.GetFileImports().packages) == 0 {
 		p.EmptyFiles = append(p.EmptyFiles, file.GetName())
@@ -336,15 +330,6 @@ func (p *OrmPlugin) parseBasicFields(msg *generator.Descriptor) {
 		}
 		ormable.Fields[fieldName] = f
 	}
-	if getMessageOptions(msg).GetMultiAccount() {
-		if accID, ok := ormable.Fields["AccountID"]; !ok {
-			ormable.Fields["AccountID"] = &Field{Type: "string"}
-		} else {
-			if accID.Type != "string" {
-				p.Fail("Cannot include AccountID field into", ormable.Name, "as it already exists there with a different type.")
-			}
-		}
-	}
 	for _, field := range getMessageOptions(msg).GetInclude() {
 		fieldName := generator.CamelCase(field.GetName())
 		if _, ok := ormable.Fields[fieldName]; !ok {
@@ -459,7 +444,7 @@ func (p *OrmPlugin) renderGormTag(field *Field) string {
 		gormRes += fmt.Sprintf("precision:%d;", tag.GetPrecision())
 	}
 	if tag.GetPrimaryKey() {
-		gormRes += "primary_key;"
+		gormRes += "primaryKey;"
 	}
 	if tag.GetUnique() {
 		gormRes += "unique;"
@@ -471,7 +456,7 @@ func (p *OrmPlugin) renderGormTag(field *Field) string {
 		gormRes += "not null;"
 	}
 	if tag.GetAutoIncrement() {
-		gormRes += "auto_increment;"
+		gormRes += "autoIncrement;"
 	}
 	if tag.Index != nil {
 		if tag.GetIndex() == "" {
@@ -482,16 +467,16 @@ func (p *OrmPlugin) renderGormTag(field *Field) string {
 	}
 	if tag.UniqueIndex != nil {
 		if tag.GetUniqueIndex() == "" {
-			gormRes += "unique_index;"
+			gormRes += "uniqueIndex;"
 		} else {
-			gormRes += fmt.Sprintf("unique_index:%s;", tag.GetUniqueIndex())
+			gormRes += fmt.Sprintf("uniqueIndex:%s;", tag.GetUniqueIndex())
 		}
 	}
 	if tag.GetEmbedded() {
 		gormRes += "embedded;"
 	}
 	if tag.EmbeddedPrefix != nil {
-		gormRes += fmt.Sprintf("embedded_prefix:%s;", tag.GetEmbeddedPrefix())
+		gormRes += fmt.Sprintf("embeddedPrefix:%s;", tag.GetEmbeddedPrefix())
 	}
 	if tag.GetIgnore() {
 		gormRes += "-;"
@@ -643,13 +628,6 @@ func (p *OrmPlugin) generateConvertFunctions(message *generator.Descriptor) {
 		}
 		ofield := ormable.Fields[generator.CamelCase(field.GetName())]
 		p.generateFieldConversion(message, field, true, ofield)
-	}
-	if getMessageOptions(message).GetMultiAccount() {
-		p.P("accountID, err := ", p.Import(authImport), ".GetAccountID(ctx, nil)")
-		p.P("if err != nil {")
-		p.P("return to, err")
-		p.P("}")
-		p.P("to.AccountID = accountID")
 	}
 	p.setupOrderedHasMany(message)
 	p.P(`if posthook, ok := interface{}(m).(`, typeName, `WithAfterToORM); ok {`)

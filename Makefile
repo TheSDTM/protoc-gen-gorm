@@ -1,7 +1,7 @@
 GOPATH ?= $(HOME)/go
 SRCPATH := $(patsubst %/,%,$(GOPATH))/src
 
-PROJECT_ROOT := github.com/infobloxopen/protoc-gen-gorm
+PROJECT_ROOT := github.com/TheSDTM/protoc-gen-gorm
 
 DOCKERFILE_PATH := $(CURDIR)/docker
 IMAGE_REGISTRY ?= infoblox

@@ -23,7 +23,7 @@ import strings "strings"
 import time "time"
 
 import auth1 "github.com/infobloxopen/atlas-app-toolkit/auth"
-import errors1 "github.com/infobloxopen/protoc-gen-gorm/errors"
+import errors1 "github.com/TheSDTM/protoc-gen-gorm/errors"
 import field_mask1 "google.golang.org/genproto/protobuf/field_mask"
 import gorm1 "github.com/jinzhu/gorm"
 import gorm2 "github.com/infobloxopen/atlas-app-toolkit/gorm"

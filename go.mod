@@ -1,4 +1,4 @@
-module github.com/infobloxopen/protoc-gen-gorm
+module github.com/TheSDTM/protoc-gen-gorm
 
 require (
 	github.com/dgrijalva/jwt-go v0.0.0-20180719211823-0b96aaa70776

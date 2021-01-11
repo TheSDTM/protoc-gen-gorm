@@ -2,7 +2,7 @@ package example
 
 import (
 	"context"
-	"github.com/infobloxopen/protoc-gen-gorm/types"
+	"github.com/TheSDTM/protoc-gen-gorm/types"
 	"testing"
 )
 
