@@ -37,10 +37,16 @@ func (p *OrmPlugin) parseAssociations(msg *generator.Descriptor) {
 				}
 				fieldType = fmt.Sprintf("[]*%sORM", fieldType)
 			} else {
-				if fieldOpts.GetBelongsTo() != nil {
-					p.parseBelongsTo(msg, ormable, fieldName, fieldTypeShort, assocOrmable, fieldOpts)
-				} else {
-					p.parseHasOne(msg, ormable, fieldName, fieldTypeShort, assocOrmable, fieldOpts)
+				isEmbedded := false
+				if tag := fieldOpts.GetTag(); tag != nil && tag.Embedded != nil && *tag.Embedded {
+					isEmbedded = true
+				}
+				if !isEmbedded {
+					if fieldOpts.GetBelongsTo() != nil {
+						p.parseBelongsTo(msg, ormable, fieldName, fieldTypeShort, assocOrmable, fieldOpts)
+					} else {
+						p.parseHasOne(msg, ormable, fieldName, fieldTypeShort, assocOrmable, fieldOpts)
+					}
 				}
 				fieldType = fmt.Sprintf("*%sORM", fieldType)
 			}

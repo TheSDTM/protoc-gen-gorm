@@ -416,10 +416,10 @@ func (p *OrmPlugin) getSortedFieldNames(fields map[string]*Field) []string {
 func (p *OrmPlugin) generateOrmable(message *generator.Descriptor) {
 	ormable := p.getOrmable(p.TypeName(message))
 	p.P(`type `, ormable.Name, ` struct {`)
-	for _, fieldName := range p.getSortedFieldNames(ormable.Fields) {
+
+	for _, fieldName := range p.getSortedFieldNames(ormable.Fields) { // TODO here field should be resorted to ID be first
 		field := ormable.Fields[fieldName]
 		p.P(fieldName, ` `, field.Type, p.renderGormTag(field))
-
 	}
 	p.P(`}`)
 }
@@ -540,10 +540,10 @@ func (p *OrmPlugin) renderGormTag(field *Field) string {
 	}
 
 	if foreignKey != nil {
-		gormRes += fmt.Sprintf("foreignkey:%s;", *foreignKey)
+		gormRes += fmt.Sprintf("foreignKey:%s;", *foreignKey)
 	}
 	if associationForeignKey != nil {
-		gormRes += fmt.Sprintf("association_foreignkey:%s;", *associationForeignKey)
+		gormRes += fmt.Sprintf("reference:%s;", *associationForeignKey)
 	}
 	if joinTable != nil {
 		gormRes += fmt.Sprintf("many2many:%s;", *joinTable)
@@ -671,7 +671,7 @@ func (p *OrmPlugin) generateFieldConversion(message *generator.Descriptor, field
 	if field.IsRepeated() { // Repeated Object ----------------------------------
 		// Some repeated fields can be handled by github.com/lib/pq
 		if p.dbEngine == ENGINE_POSTGRES && p.IsAbleToMakePQArray(fieldType) {
-			p.P(`if m.`, fieldName, ` != nil {`)
+			p.P(`if m.Get`, fieldName, `() != nil {`)
 			switch fieldType {
 			case "[]bool":
 				p.P(`to.`, fieldName, ` = make(`, p.Import(pqImport), `.BoolArray, len(m.`, fieldName, `))`)
@@ -726,19 +726,19 @@ func (p *OrmPlugin) generateFieldConversion(message *generator.Descriptor, field
 		// Type is a WKT, convert to/from as ptr to base type
 		if _, exists := wellKnownTypes[coreType]; exists { // Singular WKT -----
 			if toORM {
-				p.P(`if m.`, fieldName, ` != nil {`)
+				p.P(`if m.Get`, fieldName, `() != nil {`)
 				p.P(`v := m.`, fieldName, `.Value`)
 				p.P(`to.`, fieldName, ` = &v`)
 				p.P(`}`)
 			} else {
-				p.P(`if m.`, fieldName, ` != nil {`)
+				p.P(`if m.Get`, fieldName, `() != nil {`)
 				p.P(`to.`, fieldName, ` = &`, p.GetFileImports().wktPkgName, ".", coreType,
 					`{Value: *m.`, fieldName, `}`)
 				p.P(`}`)
 			}
 		} else if coreType == protoTypeUUIDValue { // Singular UUIDValue type ----
 			if toORM {
-				p.P(`if m.`, fieldName, ` != nil {`)
+				p.P(`if m.Get`, fieldName, `() != nil {`)
 				p.P(`tempUUID, uErr := `, p.Import(uuidImport), `.FromString(m.`, fieldName, `.Value)`)
 				p.P(`if uErr != nil {`)
 				p.P(`return to, uErr`)
@@ -746,13 +746,13 @@ func (p *OrmPlugin) generateFieldConversion(message *generator.Descriptor, field
 				p.P(`to.`, fieldName, ` = &tempUUID`)
 				p.P(`}`)
 			} else {
-				p.P(`if m.`, fieldName, ` != nil {`)
+				p.P(`if m.Get`, fieldName, `() != nil {`)
 				p.P(`to.`, fieldName, ` = &`, p.Import(gtypesImport), `.UUIDValue{Value: m.`, fieldName, `.String()}`)
 				p.P(`}`)
 			}
 		} else if coreType == protoTypeUUID { // Singular UUID type --------------
 			if toORM {
-				p.P(`if m.`, fieldName, ` != nil {`)
+				p.P(`if m.Get`, fieldName, `() != nil {`)
 				p.P(`to.`, fieldName, `, err = `, p.Import(uuidImport), `.FromString(m.`, fieldName, `.Value)`)
 				p.P(`if err != nil {`)
 				p.P(`return to, err`)
@@ -765,7 +765,7 @@ func (p *OrmPlugin) generateFieldConversion(message *generator.Descriptor, field
 			}
 		} else if coreType == protoTypeTimestamp { // Singular WKT Timestamp ---
 			if toORM {
-				p.P(`if m.`, fieldName, ` != nil {`)
+				p.P(`if m.Get`, fieldName, `() != nil {`)
 				p.P(`var t time.Time`)
 				p.P(`if t, err = `, p.Import(ptypesImport), `.Timestamp(m.`, fieldName, `); err != nil {`)
 				p.P(`return to, err`)
@@ -782,11 +782,11 @@ func (p *OrmPlugin) generateFieldConversion(message *generator.Descriptor, field
 		} else if coreType == protoTypeJSON {
 			if p.dbEngine == ENGINE_POSTGRES {
 				if toORM {
-					p.P(`if m.`, fieldName, ` != nil {`)
+					p.P(`if m.Get`, fieldName, `() != nil {`)
 					p.P(`to.`, fieldName, ` = &`, p.Import(gormpqImport), `.Jsonb{[]byte(m.`, fieldName, `.Value)}`)
 					p.P(`}`)
 				} else {
-					p.P(`if m.`, fieldName, ` != nil {`)
+					p.P(`if m.Get`, fieldName, `() != nil {`)
 					p.P(`to.`, fieldName, ` = &`, p.Import(gtypesImport), `.JSONValue{Value: string(m.`, fieldName, `.RawMessage)}`)
 					p.P(`}`)
 				}
@@ -802,7 +802,7 @@ func (p *OrmPlugin) generateFieldConversion(message *generator.Descriptor, field
 
 			if toORM {
 				if nillable {
-					p.P(`if m.`, fieldName, ` != nil {`)
+					p.P(`if m.Get`, fieldName, `() != nil {`)
 				}
 				switch btype {
 				case "int64":
@@ -860,7 +860,7 @@ func (p *OrmPlugin) generateFieldConversion(message *generator.Descriptor, field
 			}
 		} else if coreType == protoTypeInet { // Inet type for Postgres only, currently
 			if toORM {
-				p.P(`if m.`, fieldName, ` != nil {`)
+				p.P(`if m.Get`, fieldName, `() != nil {`)
 				p.P(`if to.`, fieldName, `, err = `, p.Import(gtypesImport), `.ParseInet(m.`, fieldName, `.Value); err != nil {`)
 				p.P(`return to, err`)
 				p.P(`}`)
@@ -872,7 +872,7 @@ func (p *OrmPlugin) generateFieldConversion(message *generator.Descriptor, field
 			}
 		} else if coreType == protoTimeOnly { // Time only to support time via string
 			if toORM {
-				p.P(`if m.`, fieldName, ` != nil {`)
+				p.P(`if m.Get`, fieldName, `() != nil {`)
 				p.P(`if to.`, fieldName, `, err = `, p.Import(gtypesImport), `.ParseTime(m.`, fieldName, `.Value); err != nil {`)
 				p.P(`return to, err`)
 				p.P(`}`)
@@ -886,10 +886,11 @@ func (p *OrmPlugin) generateFieldConversion(message *generator.Descriptor, field
 			}
 		} else if p.isOrmable(fieldType) {
 			// Not a WKT, but a type we're building converters for
-			p.P(`if m.`, fieldName, ` != nil {`)
 			if toORM {
-				p.P(`temp`, fieldName, `, err := m.`, fieldName, `.ToORM (ctx)`)
+				p.P(`if m.Get`, fieldName, `() != nil {`)
+				p.P(`temp`, fieldName, `, err := m.Get`, fieldName, `().ToORM (ctx)`)
 			} else {
+				p.P(`if m.`, fieldName, ` != nil {`)
 				p.P(`temp`, fieldName, `, err := m.`, fieldName, `.ToPB (ctx)`)
 			}
 			p.P(`if err != nil {`)
