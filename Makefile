@@ -32,8 +32,8 @@ vendor-update:
 
 .PHONY: options
 options:
-	protoc -I. -I$(SRCPATH) -I./vendor \
-		--gogo_out="Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor:$(SRCPATH)" \
+	protoc -I. -I$(SRCPATH) \
+		--go_out="Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor:$(SRCPATH)" \
 		options/gorm.proto
 
 .PHONY: types
@@ -97,5 +97,5 @@ gentool-types:
 .PHONY: gentool-options
 gentool-options:
 	@$(GENERATOR) \
-                --gogo_out="Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor:$(DOCKERPATH)" \
+                --go_out="Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor:$(DOCKERPATH)" \
                 options/gorm.proto
