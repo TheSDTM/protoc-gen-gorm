@@ -25,7 +25,6 @@ message GormMessageOptions {
   required bool ormable = 1;
   repeated ExtraField include = 2;
   optional string table = 3;
-  optional bool multi_account = 4;
 }
 
 message ExtraField {
@@ -67,86 +66,35 @@ message GormTag {
     optional bool embedded = 12;
     optional string embedded_prefix = 13;
     optional bool ignore = 14;
-    optional string foreignkey = 15;
-    optional string association_foreignkey = 16;
+    optional string foreign_key = 15;
+    optional string references = 16;
     optional string many_to_many = 17;
-    optional string jointable_foreignkey = 18;
-    optional string association_jointable_foreignkey = 19;
-    optional bool association_autoupdate = 20;
-    optional bool association_autocreate = 21;
-    optional bool association_save_reference = 22;
-    optional bool preload = 23;
+    optional string join_foreign_key = 18;
+    optional string join_references = 19;
 }
 
 message HasOneOptions {
-    optional string foreignkey = 1;
-    optional GormTag foreignkey_tag = 2;
-    optional string association_foreignkey = 3;
-    optional bool association_autoupdate = 4;
-    optional bool association_autocreate = 5;
-    optional bool association_save_reference = 6;
-    optional bool preload = 7;
-    optional bool replace = 8;
-    optional bool append = 9;
-    optional bool clear = 10;
+    optional string foreign_key = 1;
+    optional GormTag foreign_key_tag = 2;
+    optional string references = 3;
 }
 
 message BelongsToOptions {
-    optional string foreignkey = 1;
-    optional GormTag foreignkey_tag = 2;
-    optional string association_foreignkey = 3;
-    optional bool association_autoupdate = 4;
-    optional bool association_autocreate = 5;
-    optional bool association_save_reference = 6;
-    optional bool preload = 7;
+    optional string foreign_key = 1;
+    optional GormTag foreign_key_tag = 2;
+    optional string references = 3;
 }
 
 message HasManyOptions {
-    optional string foreignkey = 1;
-    optional GormTag foreignkey_tag = 2;
-    optional string association_foreignkey = 3;
-    optional string position_field = 4;
-    optional GormTag position_field_tag = 5;
-    optional bool association_autoupdate = 6;
-    optional bool association_autocreate = 7;
-    optional bool association_save_reference = 8;
-    optional bool preload = 9;
-    optional bool replace = 10;
-    optional bool append = 11;
-    optional bool clear = 12;
+    optional string foreign_key = 1;
+    optional GormTag foreign_key_tag = 2;
+    optional string references = 3;
 }
 
 message ManyToManyOptions {
     optional string jointable = 1;
-    optional string foreignkey = 2;
-    optional string jointable_foreignkey = 3;
-    optional string association_foreignkey = 4;
-    optional string association_jointable_foreignkey = 5;
-    optional bool association_autoupdate = 6;
-    optional bool association_autocreate = 7;
-    optional bool association_save_reference = 8;
-    optional bool preload = 9;
-    optional bool replace = 10;
-    optional bool append = 11;
-    optional bool clear = 13;
-}
-
-
-// To be used in (leiu of) the interceptor
-extend google.protobuf.ServiceOptions {
-  optional AutoServerOptions server = 52119;
-}
-
-message AutoServerOptions {
-  optional bool autogen = 1;
-  optional bool txn_middleware = 2;
-  optional bool with_tracing = 3;
-}
-
-extend google.protobuf.MethodOptions {
-  optional MethodOptions method = 52119;
-}
-
-message MethodOptions {
-  optional string object_type = 1;
+    optional string foreign_key = 2;
+    optional string join_foreign_key = 3;
+    optional string references = 4;
+    optional string join_references = 5;
 }

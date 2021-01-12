@@ -3,7 +3,6 @@ package plugin
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	"text/template"
@@ -467,7 +466,7 @@ func (p *OrmPlugin) generateOrmable(message pgs.Message) {
 }
 
 func (p *OrmPlugin) renderGormTag(field *Field) string {
-	var gormRes, atlasRes string
+	var gormRes string
 	tag := field.GetTag()
 	if tag == nil {
 		tag = &gorm.GormTag{}
@@ -525,60 +524,27 @@ func (p *OrmPlugin) renderGormTag(field *Field) string {
 	}
 
 	var foreignKey, associationForeignKey, joinTable, joinTableForeignKey, associationJoinTableForeignKey *string
-	var associationAutoupdate, associationAutocreate, associationSaveReference, preload, replace, append, clear *bool
 	if hasOne := field.GetHasOne(); hasOne != nil {
-		foreignKey = hasOne.Foreignkey
-		associationForeignKey = hasOne.AssociationForeignkey
-		associationAutoupdate = hasOne.AssociationAutoupdate
-		associationAutocreate = hasOne.AssociationAutocreate
-		associationSaveReference = hasOne.AssociationSaveReference
-		preload = hasOne.Preload
-		clear = hasOne.Clear
-		replace = hasOne.Replace
-		append = hasOne.Append
+		foreignKey = hasOne.ForeignKey
+		associationForeignKey = hasOne.References
 	} else if belongsTo := field.GetBelongsTo(); belongsTo != nil {
-		foreignKey = belongsTo.Foreignkey
-		associationForeignKey = belongsTo.AssociationForeignkey
-		associationAutoupdate = belongsTo.AssociationAutoupdate
-		associationAutocreate = belongsTo.AssociationAutocreate
-		associationSaveReference = belongsTo.AssociationSaveReference
-		preload = belongsTo.Preload
+		foreignKey = belongsTo.ForeignKey
+		associationForeignKey = belongsTo.References
 	} else if hasMany := field.GetHasMany(); hasMany != nil {
-		foreignKey = hasMany.Foreignkey
-		associationForeignKey = hasMany.AssociationForeignkey
-		associationAutoupdate = hasMany.AssociationAutoupdate
-		associationAutocreate = hasMany.AssociationAutocreate
-		associationSaveReference = hasMany.AssociationSaveReference
-		clear = hasMany.Clear
-		preload = hasMany.Preload
-		replace = hasMany.Replace
-		append = hasMany.Append
-		if hasMany.PositionField != nil {
-			atlasRes += fmt.Sprintf("position:%s;", hasMany.GetPositionField())
-		}
+		foreignKey = hasMany.ForeignKey
+		associationForeignKey = hasMany.References
 	} else if mtm := field.GetManyToMany(); mtm != nil {
-		foreignKey = mtm.Foreignkey
-		associationForeignKey = mtm.AssociationForeignkey
+		foreignKey = mtm.ForeignKey
+		associationForeignKey = mtm.References
 		joinTable = mtm.Jointable
-		joinTableForeignKey = mtm.JointableForeignkey
-		associationJoinTableForeignKey = mtm.AssociationJointableForeignkey
-		associationAutoupdate = mtm.AssociationAutoupdate
-		associationAutocreate = mtm.AssociationAutocreate
-		associationSaveReference = mtm.AssociationSaveReference
-		preload = mtm.Preload
-		clear = mtm.Clear
-		replace = mtm.Replace
-		append = mtm.Append
+		joinTableForeignKey = mtm.JoinForeignKey
+		associationJoinTableForeignKey = mtm.JoinReferences
 	} else {
-		foreignKey = tag.Foreignkey
-		associationForeignKey = tag.AssociationForeignkey
+		foreignKey = tag.ForeignKey
+		associationForeignKey = tag.References
 		joinTable = tag.ManyToMany
-		joinTableForeignKey = tag.JointableForeignkey
-		associationJoinTableForeignKey = tag.AssociationJointableForeignkey
-		associationAutoupdate = tag.AssociationAutoupdate
-		associationAutocreate = tag.AssociationAutocreate
-		associationSaveReference = tag.AssociationSaveReference
-		preload = tag.Preload
+		joinTableForeignKey = tag.JoinForeignKey
+		associationJoinTableForeignKey = tag.JoinReferences
 	}
 
 	if foreignKey != nil {
@@ -596,38 +562,16 @@ func (p *OrmPlugin) renderGormTag(field *Field) string {
 	if associationJoinTableForeignKey != nil {
 		gormRes += fmt.Sprintf("association_jointable_foreignkey:%s;", *associationJoinTableForeignKey)
 	}
-	if associationAutoupdate != nil {
-		gormRes += fmt.Sprintf("association_autoupdate:%s;", strconv.FormatBool(*associationAutoupdate))
-	}
-	if associationAutocreate != nil {
-		gormRes += fmt.Sprintf("association_autocreate:%s;", strconv.FormatBool(*associationAutocreate))
-	}
-	if associationSaveReference != nil {
-		gormRes += fmt.Sprintf("association_save_reference:%s;", strconv.FormatBool(*associationSaveReference))
-	}
-	if preload != nil {
-		gormRes += fmt.Sprintf("preload:%s;", strconv.FormatBool(*preload))
-	}
-	if clear != nil {
-		gormRes += fmt.Sprintf("clear:%s;", strconv.FormatBool(*clear))
-	} else if replace != nil {
-		gormRes += fmt.Sprintf("replace:%s;", strconv.FormatBool(*replace))
-	} else if append != nil {
-		gormRes += fmt.Sprintf("append:%s;", strconv.FormatBool(*append))
-	}
 
-	var gormTag, atlasTag string
+	var gormTag string
 	if gormRes != "" {
 		gormTag = fmt.Sprintf("gorm:\"%s\"", strings.TrimRight(gormRes, ";"))
 	}
-	if atlasRes != "" {
-		atlasTag = fmt.Sprintf("atlas:\"%s\"", strings.TrimRight(atlasRes, ";"))
-	}
-	finalTag := strings.TrimSpace(strings.Join([]string{gormTag, atlasTag}, " "))
-	if finalTag == "" {
+
+	if gormTag == "" {
 		return ""
 	} else {
-		return fmt.Sprintf("`%s`", finalTag)
+		return fmt.Sprintf("`%s`", gormTag)
 	}
 }
 
@@ -671,7 +615,6 @@ func (p *OrmPlugin) generateConvertFunctions(message pgs.Message) {
 		ofield := ormable.Fields[generator.CamelCase(string(field.Name()))]
 		p.generateFieldConversion(message, field, true, ofield)
 	}
-	p.setupOrderedHasMany(message)
 	p.P(`if posthook, ok := interface{}(m).(`, typeName, `WithAfterToORM); ok {`)
 	p.P(`err = posthook.AfterToORM(ctx, &to)`)
 	p.P(`}`)
@@ -964,30 +907,6 @@ func (p *OrmPlugin) generateHookInterfaces(message pgs.Message) {
 		p.P(desc[0], `(context.Context, *`, desc[1], `) error`)
 		p.P(`}`)
 		p.P()
-	}
-}
-
-func (p *OrmPlugin) setupOrderedHasMany(message pgs.Message) {
-	ormable := p.getOrmable(p.TypeName(message))
-	for _, fieldName := range p.getSortedFieldNames(ormable.Fields) {
-		p.setupOrderedHasManyByName(message, fieldName)
-	}
-}
-
-func (p *OrmPlugin) setupOrderedHasManyByName(message pgs.Message, fieldName string) {
-	ormable := p.getOrmable(p.TypeName(message))
-	field := ormable.Fields[fieldName]
-
-	if field == nil {
-		return
-	}
-
-	if field.GetHasMany().GetPositionField() != "" {
-		positionField := field.GetHasMany().GetPositionField()
-		positionFieldType := p.getOrmable(field.Type).Fields[positionField].Type
-		p.P(`for i, e := range `, `to.`, fieldName, `{`)
-		p.P(`e.`, positionField, ` = `, positionFieldType, `(i)`)
-		p.P(`}`)
 	}
 }
 
