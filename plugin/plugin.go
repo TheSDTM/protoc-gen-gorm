@@ -268,10 +268,10 @@ func (p *OrmPlugin) parseBasicFields(msg pgs.Message) {
 			default:
 				continue
 			}
-			// TODO perfilov
-			// } else if (!field.Type().IsEmbed() || !p.isOrmable(fieldType)) && field.IsRepeated() {
-			// 	// Not implemented yet
-			// 	continue
+		} else if (!field.Type().IsEmbed() || !p.isOrmable(fieldType)) && field.Type().IsRepeated() {
+			// Not implemented yet
+			continue
+
 		} else if field.Type().IsEnum() {
 			fieldType = "int32"
 			if p.stringEnums {
