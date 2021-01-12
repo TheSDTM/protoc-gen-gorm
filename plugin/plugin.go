@@ -536,44 +536,44 @@ func (p *OrmPlugin) renderGormTag(field *Field) string {
 		gormRes += "constraint:" + *tag.Constraint + ";"
 	}
 
-	var foreignKey, associationForeignKey, joinTable, joinTableForeignKey, associationJoinTableForeignKey *string
+	var foreignKey, references, joinTable, joinForeignKey, joinReferences *string
 	if hasOne := field.GetHasOne(); hasOne != nil {
 		foreignKey = hasOne.ForeignKey
-		associationForeignKey = hasOne.References
+		references = hasOne.References
 	} else if belongsTo := field.GetBelongsTo(); belongsTo != nil {
 		foreignKey = belongsTo.ForeignKey
-		associationForeignKey = belongsTo.References
+		references = belongsTo.References
 	} else if hasMany := field.GetHasMany(); hasMany != nil {
 		foreignKey = hasMany.ForeignKey
-		associationForeignKey = hasMany.References
+		references = hasMany.References
 	} else if mtm := field.GetManyToMany(); mtm != nil {
 		foreignKey = mtm.ForeignKey
-		associationForeignKey = mtm.References
+		references = mtm.References
 		joinTable = mtm.Jointable
-		joinTableForeignKey = mtm.JoinForeignKey
-		associationJoinTableForeignKey = mtm.JoinReferences
+		joinForeignKey = mtm.JoinForeignKey
+		joinReferences = mtm.JoinReferences
 	} else {
 		foreignKey = tag.ForeignKey
-		associationForeignKey = tag.References
+		references = tag.References
 		joinTable = tag.ManyToMany
-		joinTableForeignKey = tag.JoinForeignKey
-		associationJoinTableForeignKey = tag.JoinReferences
+		joinForeignKey = tag.JoinForeignKey
+		joinReferences = tag.JoinReferences
 	}
 
 	if foreignKey != nil {
 		gormRes += fmt.Sprintf("foreignKey:%s;", *foreignKey)
 	}
-	if associationForeignKey != nil {
-		gormRes += fmt.Sprintf("reference:%s;", *associationForeignKey)
+	if references != nil {
+		gormRes += fmt.Sprintf("references:%s;", *references)
 	}
 	if joinTable != nil {
 		gormRes += fmt.Sprintf("many2many:%s;", *joinTable)
 	}
-	if joinTableForeignKey != nil {
-		gormRes += fmt.Sprintf("jointable_foreignkey:%s;", *joinTableForeignKey)
+	if joinForeignKey != nil {
+		gormRes += fmt.Sprintf("joinForeignKey:%s;", *joinForeignKey)
 	}
-	if associationJoinTableForeignKey != nil {
-		gormRes += fmt.Sprintf("association_jointable_foreignkey:%s;", *associationJoinTableForeignKey)
+	if joinReferences != nil {
+		gormRes += fmt.Sprintf("joinReferences:%s;", *joinReferences)
 	}
 
 	var gormTag string
@@ -915,7 +915,7 @@ func (p *OrmPlugin) generateHookInterfaces(message pgs.Message) {
 		{"BeforeToPB", typeName, " called before default ToPB code"},
 		{"AfterToPB", typeName, " called after default ToPB code"},
 	} {
-		p.P(`// `, typeName, desc[0], desc[2])
+		p.P(`// `, typeName, `With`, desc[0], desc[2])
 		p.P(`type `, typeName, `With`, desc[0], ` interface {`)
 		p.P(desc[0], `(context.Context, *`, desc[1], `) error`)
 		p.P(`}`)
