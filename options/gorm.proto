@@ -51,6 +51,13 @@ message GormFieldOptions {
     optional string reference_of = 7;
 }
 
+enum FieldWritePermission {
+  FieldWritePermissionUpdateOnly = 1;
+  FieldWritePermissionCreateOnly = 2;
+  FieldWritePermissionNo = 3;
+  FieldWritePermissionCreateUpdate = 4;
+}
+
 message GormTag {
     optional string column = 1;
     optional string type = 2;
@@ -71,6 +78,10 @@ message GormTag {
     optional string many_to_many = 17;
     optional string join_foreign_key = 18;
     optional string join_references = 19;
+    optional string check = 20;
+    optional bool canRead = 21;
+    optional FieldWritePermission writePermission = 22;
+    optional string constraint = 23;
 }
 
 message HasOneOptions {

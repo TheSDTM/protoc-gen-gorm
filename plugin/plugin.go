@@ -113,12 +113,6 @@ type OrmPlugin struct {
 	suppressWarn bool
 }
 
-// func (p *OrmPlugin) setFile(file *generator.FileDescriptor) {
-// 	p.currentFile = file
-// 	p.currentPackage = file.GetPackage()
-// 	// p.Generator.SetFile(file.FileDescriptorProto)
-// }
-
 // Name identifies the plugin
 func (p *OrmPlugin) Name() string {
 	return "gorm"
@@ -521,6 +515,25 @@ func (p *OrmPlugin) renderGormTag(field *Field) string {
 	}
 	if tag.GetIgnore() {
 		gormRes += "-;"
+	}
+	if tag.Check != nil {
+		gormRes += fmt.Sprintf("check:%s;", tag.GetCheck())
+	}
+	if tag.CanRead != nil && *tag.CanRead == false {
+		gormRes += "->:false;"
+	}
+	if tag.WritePermission != nil {
+		switch *tag.WritePermission {
+		case gorm.FieldWritePermission_FieldWritePermissionUpdateOnly:
+			gormRes += "<-:update;"
+		case gorm.FieldWritePermission_FieldWritePermissionCreateOnly:
+			gormRes += "<-:create;"
+		case gorm.FieldWritePermission_FieldWritePermissionNo:
+			gormRes += "<-:false;"
+		}
+	}
+	if tag.Constraint != nil {
+		gormRes += "constraint:" + *tag.Constraint + ";"
 	}
 
 	var foreignKey, associationForeignKey, joinTable, joinTableForeignKey, associationJoinTableForeignKey *string
