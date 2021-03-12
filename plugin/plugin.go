@@ -108,9 +108,9 @@ type OrmPlugin struct {
 	currentFile       pgs.File
 	currentFileName   string
 	currentFileBuffer []string
-	// fileImports    map[*generator.FileDescriptor]*fileImports
-	messages     map[string]struct{}
-	suppressWarn bool
+	fileImports       map[string]string
+	messages          map[string]struct{}
+	suppressWarn      bool
 }
 
 // Name identifies the plugin
@@ -124,7 +124,7 @@ func (p *OrmPlugin) InitContext(c pgs.BuildContext) {
 	p.ModuleBase.InitContext(c)
 	p.ctx = pgsgo.InitContext(c.Parameters())
 
-	// p.fileImports = make(map[*generator.FileDescriptor]*fileImports)
+	p.fileImports = make(map[string]string)
 	p.messages = make(map[string]struct{})
 	p.ormableTypes = map[string]*OrmableType{}
 	if strings.EqualFold(p.ctx.Params()["engine"], "postgres") {
@@ -210,6 +210,13 @@ func (p *OrmPlugin) generate(f pgs.File) {
 	tpl := template.New("headerTpl").Funcs(map[string]interface{}{
 		"package": p.ctx.PackageName,
 		"name":    p.ctx.Name,
+		"generatedImports": func() string {
+			importsRes := ""
+			for k, v := range p.fileImports {
+				importsRes += k + " \"" + v + "\"\n\t"
+			}
+			return importsRes
+		},
 		"generated_body": func() string {
 			return res
 		},
@@ -245,6 +252,7 @@ func (p *OrmPlugin) parseBasicFields(msg pgs.Message) {
 		fieldType := string(p.ctx.Type(field))
 		var typePackage string
 		if p.dbEngine == ENGINE_POSTGRES && p.IsAbleToMakePQArray(fieldType) {
+			p.fileImports["pqImport"] = "github.com/lib/pq"
 			switch fieldType {
 			case "[]bool":
 				fieldType = fmt.Sprintf("%s.BoolArray", "pqImport")
@@ -280,6 +288,7 @@ func (p *OrmPlugin) parseBasicFields(msg pgs.Message) {
 				p.wktPkgName = strings.Trim(parts[0], "*")
 				fieldType = v
 				typePackage = wktImport
+				p.fileImports["wktImport"] = "github.com/golang/protobuf/ptypes/wrappers"
 			} else if rawType == protoTypeUUID {
 				fieldType = fmt.Sprintf("%s.UUID", "uuidImport")
 				typePackage = uuidImport
@@ -293,7 +302,7 @@ func (p *OrmPlugin) parseBasicFields(msg pgs.Message) {
 					fieldOpts.Tag = tagWithType(tag, "uuid")
 				}
 			} else if rawType == protoTypeTimestamp {
-				// p.UsingGoImports(stdTimeImport) // TODO perfilov
+				p.fileImports["stdTimeImport"] = "time"
 				typePackage = stdTimeImport
 				fieldType = fmt.Sprintf("*%s.Time", "stdTimeImport")
 			} else if rawType == protoTypeJSON {
@@ -306,8 +315,6 @@ func (p *OrmPlugin) parseBasicFields(msg pgs.Message) {
 					continue
 				}
 			} else if rawType == protoTypeResource {
-				// "resourceImport" // TODO perfilov
-
 				tag := getFieldOptions(field).GetTag()
 				ttype := tag.GetType()
 				ttype = strings.ToLower(ttype)
@@ -393,16 +400,20 @@ func (p *OrmPlugin) addIncludedField(ormable *OrmableType, field *gorm.ExtraFiel
 			// basic type, 100% okay, no imports or changes needed
 		} else if rawType == "Time" {
 			typePackage = stdTimeImport
+			p.fileImports["stdTimeImport"] = "time"
 			rawType = fmt.Sprintf("%s.Time", "stdTimeImport")
 		} else if rawType == "UUID" {
 			// rawType = fmt.Sprintf("%s.UUID", "uuidImport")
 			typePackage = uuidImport
+			p.fileImports["uuidImport"] = "github.com/satori/go.uuid"
 		} else if field.GetType() == "Jsonb" && p.dbEngine == ENGINE_POSTGRES {
 			// rawType = fmt.Sprintf("%s.Jsonb", "gormpqImport")
 			typePackage = gormpqImport
+			p.fileImports["gormpqImport"] = "github.com/jinzhu/gorm/dialects/postgres"
 		} else if rawType == "Inet" {
 			// rawType = fmt.Sprintf("%s.Inet", "gtypesImport")
 			typePackage = gtypesImport
+			p.fileImports["gtypesImport"] = "github.com/TheSDTM/protoc-gen-gorm/types"
 		} else {
 			p.warning(`included field %q of type %q is not a recognized special type, and no package specified. This type is assumed to be in the same package as the generated code`,
 				string(field.GetName()), field.GetType())
@@ -718,6 +729,46 @@ func (p *OrmPlugin) generateFieldConversion(message pgs.Message, field pgs.Field
 				p.P(`to.`, fieldName, ` = `, fieldType, `(m.`, fieldName, `)`)
 			}
 		}
+	} else if field.OneOf() != nil {
+		if toORM {
+			oneOf := field.OneOf()
+			for i := range oneOf.Fields() {
+				f := oneOf.Fields()[i]
+				fieldName = generator.CamelCase(string(f.Name()))
+				fieldType = string(p.ctx.Type(f))
+
+				if fieldType == "string" {
+					p.P(`if len(m.Get`, fieldName, `()) != 0 {`)
+					p.P(`to.`, fieldName, ` = m.Get`, fieldName, `()`)
+					p.P(`}`)
+				} else {
+					p.P(`if m.Get`, fieldName, `() != nil {`)
+					p.P(`tmpConv, _ := m.Get`, fieldName, `().ToORM(ctx)`)
+					p.P(`to.`, fieldName, ` = &tmpConv`)
+					p.P(`}`)
+				}
+			}
+		} else {
+			oneOf := field.OneOf()
+			oneOfFieldName := generator.CamelCase(string(oneOf.Name()))
+			msgName := generator.CamelCase(string(oneOf.Message().Name()))
+			for i := range oneOf.Fields() {
+				f := oneOf.Fields()[i]
+				fieldName = generator.CamelCase(string(f.Name()))
+				fieldType = string(p.ctx.Type(f))
+
+				if fieldType == "string" {
+					p.P(`if len(m.`, fieldName, `) != 0 {`)
+					p.P(`to.`, oneOfFieldName, ` = &`, msgName, `_`, fieldName, `{`, fieldName, `: m.`, fieldName, `}`)
+					p.P(`}`)
+				} else {
+					p.P(`if m.`, fieldName, ` != nil {`)
+					p.P(`tmpConv, _ := m.`, fieldName, `.ToPB(ctx)`)
+					p.P(`to.`, oneOfFieldName, ` = &`, msgName, `_`, fieldName, `{`, fieldName, `: &tmpConv`, `}`)
+					p.P(`}`)
+				}
+			}
+		}
 	} else if field.Type().IsEmbed() { // Singular Object -------------
 		//Check for WKTs
 		parts := strings.Split(fieldType, ".")
@@ -763,6 +814,7 @@ func (p *OrmPlugin) generateFieldConversion(message pgs.Message, field pgs.Field
 				p.P(`to.`, fieldName, ` = &`, "gtypesImport", `.UUID{Value: m.`, fieldName, `.String()}`)
 			}
 		} else if coreType == protoTypeTimestamp { // Singular WKT Timestamp ---
+			p.fileImports["ptypesImport"] = "github.com/golang/protobuf/ptypes"
 			if toORM {
 				p.P(`if m.Get`, fieldName, `() != nil {`)
 				p.P(`var t time.Time`)
@@ -798,6 +850,8 @@ func (p *OrmPlugin) generateFieldConversion(message pgs.Message, field pgs.Field
 			btype := strings.TrimPrefix(ofield.Type, "*")
 			nillable := strings.HasPrefix(ofield.Type, "*")
 			iface := ofield.Type == "interface{}"
+
+			p.fileImports["resourceImport"] = "github.com/infobloxopen/atlas-app-toolkit/gorm/resource"
 
 			if toORM {
 				if nillable {
