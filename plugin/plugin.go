@@ -288,7 +288,7 @@ func (p *OrmPlugin) parseBasicFields(msg pgs.Message) {
 				p.wktPkgName = strings.Trim(parts[0], "*")
 				fieldType = v
 				typePackage = wktImport
-				p.fileImports["wktImport"] = "github.com/golang/protobuf/ptypes/wrappers"
+				p.fileImports["wrappers"] = "github.com/golang/protobuf/ptypes/wrappers"
 			} else if rawType == protoTypeUUID {
 				fieldType = fmt.Sprintf("%s.UUID", "uuidImport")
 				typePackage = uuidImport
@@ -781,7 +781,7 @@ func (p *OrmPlugin) generateFieldConversion(message pgs.Message, field pgs.Field
 				p.P(`to.`, fieldName, ` = &v`)
 				p.P(`}`)
 			} else {
-				p.P(`if m.Get`, fieldName, `() != nil {`)
+				p.P(`if m.`, fieldName, ` != nil {`)
 				p.P(`to.`, fieldName, ` = &`, p.wktPkgName, ".", coreType,
 					`{Value: *m.`, fieldName, `}`)
 				p.P(`}`)
