@@ -16,11 +16,11 @@ func (p *OrmPlugin) parseAssociations(msg pgs.Message) {
 	typeName := generator.CamelCase(msg.Name().String())
 	ormable := p.getOrmable(typeName)
 	for _, field := range msg.Fields() {
+		fieldName := generator.CamelCase(string(field.Name()))
 		fieldOpts := getFieldOptions(field)
 		if fieldOpts.GetDrop() {
 			continue
 		}
-		fieldName := generator.CamelCase(string(field.Name()))
 		fieldType := p.ctx.Type(field).String()
 		fieldType = strings.Trim(fieldType, "[]*")
 		parts := strings.Split(fieldType, ".")

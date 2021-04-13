@@ -196,7 +196,7 @@ func (p *OrmPlugin) generate(f pgs.File) {
 		typeName := p.getMsgName(msg)
 		if p.isOrmable(typeName) {
 			p.generateOrmable(msg)
-			p.generateTableNameFunction(msg)
+			// p.generateTableNameFunction(msg)
 			p.generateConvertFunctions(msg)
 			p.generateHookInterfaces(msg)
 		}
