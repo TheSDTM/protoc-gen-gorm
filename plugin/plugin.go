@@ -48,6 +48,7 @@ var wellKnownTypes = map[string]string{
 	"UInt32Value": "*uint32",
 	"UInt64Value": "*uint64",
 	"BoolValue":   "*bool",
+	"Struct":      "[]byte",
 	//  "BytesValue" : "*[]byte",
 }
 
@@ -283,12 +284,18 @@ func (p *OrmPlugin) parseBasicFields(msg pgs.Message) {
 			parts := strings.Split(fieldType, ".")
 			rawType := parts[len(parts)-1]
 			if v, exists := wellKnownTypes[rawType]; exists {
-				// TODO perfilov
-				// p.typesToRegister = append(p.typesToRegister, field.GetTypeName())
-				p.wktPkgName = strings.Trim(parts[0], "*")
-				fieldType = v
-				typePackage = wktImport
-				p.fileImports["wrappers"] = "github.com/golang/protobuf/ptypes/wrappers"
+				if rawType != "Struct" {
+					// TODO perfilov
+					// p.typesToRegister = append(p.typesToRegister, field.GetTypeName())
+					p.wktPkgName = strings.Trim(parts[0], "*")
+					fieldType = v
+					typePackage = wktImport
+					p.fileImports["wrappers"] = "github.com/golang/protobuf/ptypes/wrappers"
+				} else {
+					p.fileImports["_struct"] = "google.golang.org/protobuf/types/known/structpb"
+					p.fileImports["json"] = "encoding/json"
+					fieldType = v
+				}
 			} else if rawType == protoTypeUUID {
 				fieldType = fmt.Sprintf("%s.UUID", "uuidImport")
 				typePackage = uuidImport
@@ -775,16 +782,45 @@ func (p *OrmPlugin) generateFieldConversion(message pgs.Message, field pgs.Field
 		coreType := parts[len(parts)-1]
 		// Type is a WKT, convert to/from as ptr to base type
 		if _, exists := wellKnownTypes[coreType]; exists { // Singular WKT -----
-			if toORM {
-				p.P(`if m.Get`, fieldName, `() != nil {`)
-				p.P(`v := m.`, fieldName, `.Value`)
-				p.P(`to.`, fieldName, ` = &v`)
-				p.P(`}`)
+			if coreType == "Struct" {
+				if toORM {
+					p.P(`if m.Get`, fieldName, `() != nil {`)
+					p.P(`fields := m.`, fieldName, `.GetFields()`)
+					p.P(`converted := map[string]interface{}{}`)
+					p.P(`for k, f := range fields {`)
+					p.P(`	converted[k] = f.AsInterface()`)
+					p.P(`}`)
+					p.P(`res, err := json.Marshal(converted)`)
+					p.P(`if err != nil {`)
+					p.P(`	return to, err`)
+					p.P(`}`)
+					p.P(`to.`, fieldName, ` = res`)
+					p.P(`}`)
+				} else {
+					p.P(`if m.`, fieldName, ` != nil {`)
+					p.P(`decoded := map[string]interface{}{}`)
+					p.P(`if err := json.Unmarshal(m.`, fieldName, `, &decoded); err != nil {`)
+					p.P(`	return to, err`)
+					p.P(`}`)
+					p.P(`var err error`)
+					p.P(`to.`, fieldName, `, err = _struct.NewStruct(decoded)`)
+					p.P(`if err != nil {`)
+					p.P(`	return to, err`)
+					p.P(`}`)
+					p.P(`}`)
+				}
 			} else {
-				p.P(`if m.`, fieldName, ` != nil {`)
-				p.P(`to.`, fieldName, ` = &`, p.wktPkgName, ".", coreType,
-					`{Value: *m.`, fieldName, `}`)
-				p.P(`}`)
+				if toORM {
+					p.P(`if m.Get`, fieldName, `() != nil {`)
+					p.P(`v := m.`, fieldName, `.Value`)
+					p.P(`to.`, fieldName, ` = &v`)
+					p.P(`}`)
+				} else {
+					p.P(`if m.`, fieldName, ` != nil {`)
+					p.P(`to.`, fieldName, ` = &`, p.wktPkgName, ".", coreType,
+						`{Value: *m.`, fieldName, `}`)
+					p.P(`}`)
+				}
 			}
 		} else if coreType == protoTypeUUIDValue { // Singular UUIDValue type ----
 			if toORM {
