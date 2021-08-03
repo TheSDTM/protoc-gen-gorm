@@ -797,7 +797,7 @@ func (p *OrmPlugin) generateFieldConversion(message pgs.Message, field pgs.Field
 					p.P(`to.`, fieldName, ` = res`)
 					p.P(`}`)
 				} else {
-					p.P(`if m.`, fieldName, ` != nil {`)
+					p.P(`if m.`, fieldName, ` != nil && len(m.`, fieldName, `) > 0 {`)
 					p.P(`decoded := map[string]interface{}{}`)
 					p.P(`if err := json.Unmarshal(m.`, fieldName, `, &decoded); err != nil {`)
 					p.P(`	return to, err`)
